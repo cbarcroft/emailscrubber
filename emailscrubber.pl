@@ -36,10 +36,16 @@ while (my $line = <$data>) {
   if ($csv->parse($line)) {
  
       my @fields = $csv->fields();
-      my $full_email = $fields[0];
+      my $full_email = $fields[1];
       my ($email_user, $email_domain) = (split /@/, $full_email)[0,1];
 
       # *** BEGIN RULE CHECKS **
+
+      # Reject if email contains an illegal character
+      if ( contains_illegal_character($full_email) ){
+      	reject_email($full_email, "Illegal character");
+      	next;
+      }
 
       # Reject if email is not a valid email address
       if ( is_invalid_email_address($full_email) ){
@@ -101,6 +107,11 @@ sub is_blacklisted {
 	my $email_user = shift;
 
 	return ( $email_user ~~ @blacklist );
+}
+
+sub contains_illegal_character {
+	my $email = shift;
+	return ( $email =~ m/\/|:|;|\\/ ); 
 }
 
 sub remove_duplicates(\@){
