@@ -36,37 +36,48 @@ while (my $line = <$data>) {
   if ($csv->parse($line)) {
  
       my @fields = $csv->fields();
-      my $full_email = $fields[0];
-      my ($email_user, $email_domain) = (split /@/, $full_email)[0,1];
+      my $customer_code = $fields[0];
+      my $full_email = $fields[1];
+      my $year = $fields[2];
+      my ($email_userinitial, $email_domaininitial) = (split /@/, $full_email)[0,1];
+      my $email_user = lc $email_userinitial;
+      my $email_domain = lc $email_domaininitial;
 
       # *** BEGIN RULE CHECKS **
 
       # Reject if email is not a valid email address
       if ( is_invalid_email_address($full_email) ){
-      	reject_email($full_email, "Invalid email address");
+      	reject_email($full_email, $customer_code, $year, "Invalid email address");
       	next;
       }
 
       # Reject if email user is only numbers
       if ( is_numeric_only($email_user) ){
-      	reject_email($full_email, "Only numeric");
+      	reject_email($full_email, $customer_code, $year, "Only numeric");
       	next;
       }
 
       # Reject if email user is too short (second argument is the minimum character length)
       if ( is_too_short($email_user, 3) ){
-      	reject_email($full_email, "Too short");
+      	reject_email($full_email, $customer_code, $year, "Too short");
       	next;
       }
 
       # Reject if email user is present in the blacklist at config/blacklist.csv
       if ( is_blacklisted($email_user) ){
-      	reject_email($full_email, "Blacklisted");
+      	reject_email($full_email, $customer_code, $year, "Email User Blacklisted");
       	next;
       }
 
+      # Reject if email domain is present in the blacklist at config/blacklist.csv
+      if ( is_blacklisted($email_domain) ){
+      	reject_email($full_email, $customer_code, $year, "Email Domain Blacklisted");
+      	next;
+      }
+      
       # If we get this far, then nothing is wrong - output email to accepted file.
-      accept_email($full_email)
+      accept_email($full_email, $customer_code, $year)
+
  
   } else {
       warn "Line could not be parsed: $line\n";
@@ -103,6 +114,7 @@ sub is_blacklisted {
 	return ( $email_user ~~ @blacklist );
 }
 
+
 sub remove_duplicates(\@){
 	my $origfile = shift; 
 	my $outfile  = "tmp/uniq_" . $origfile;
@@ -126,18 +138,22 @@ sub remove_duplicates(\@){
 
 sub reject_email {
 	my $email = shift;
+	my $customer_code = shift;
+	my $year = shift;
 	my $reason = shift;
 
 	print "REJECTED " . $email . " $reason \n";
-	$csv->print($rejected_outfile, [$email, $reason]);
+	$csv->print($rejected_outfile, [$email, $customer_code, $year, $reason]);
 	$counters{rejected}++; 
 }
 
 sub accept_email {
 	my $email = shift;
+	my $customer_code = shift;
+	my $year = shift;
 
 	print "ACCEPTED " . $email . "\n";
-	$csv->print($accepted_outfile, [$email]);
+	$csv->print($accepted_outfile, [$email, $customer_code, $year]);
 	$counters{accepted}++;  
 }
 
