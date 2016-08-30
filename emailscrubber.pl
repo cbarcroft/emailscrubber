@@ -111,7 +111,7 @@ sub is_blacklisted {
 
 sub contains_illegal_character {
 	my $email = shift;
-	return ( $email =~ m/\/|:|;|\\/ ); 
+	return ( $email =~ m/\/|\\|\:|\;/ ); 
 }
 
 sub remove_duplicates(\@){
